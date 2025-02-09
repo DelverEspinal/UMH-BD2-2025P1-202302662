@@ -1,9 +1,0 @@
-SELECT
-t1.Country, t1.Product, t1.SalePrice, t1.ManufacturingPrice, t1.date, t2.exchange_rate
-FROM financialsample AS t1
-INNER JOIN currencies AS t2
-ON t1.Country = t2.Country
-WHERE 
-t1.Country = 'Mexico'
-AND (t1.Date LIKE '%/01/2014'  OR t1.Date LIKE '%/02/2014') 
-ORDER BY t1.Date, t1.Product;
