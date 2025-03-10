@@ -1,0 +1,95 @@
+/* 1-Sentencias de creación e inserción de datos de las tablas */
+
+DROP TABLE Cuentas;
+CREATE TABLE Cuentas (
+    Cuenta VARCHAR(10) PRIMARY KEY,
+    TotalCreditos DECIMAL(10,2) DEFAULT 0,
+    TotalDebitos DECIMAL(10,2) DEFAULT 0,
+    Saldo DECIMAL(10,2) DEFAULT 0
+);
+
+DROP TABLE Transacciones;
+CREATE TABLE Transacciones (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Cuenta VARCHAR(10),
+    Fecha DATE,
+    Credito DECIMAL(10,2),
+    Debito DECIMAL(10,2),
+    FOREIGN KEY (Cuenta) REFERENCES Cuentas(Cuenta)
+);
+
+INSERT INTO Cuentas (Cuenta, TotalCreditos, TotalDebitos, Saldo)
+VALUES 
+('20010001', 800.00, 0.00, 800.00),
+('20010002', 560.00, 0.00, 560.00),
+('20010003', 1254.00, 0.00, 1254.00),
+('20010004', 15000.00, 0.00, 15000.00),
+('20010005', 256.00, 0.00, 256.00);
+
+/* 2-Sentencia de eliminación y creación del procedimiento almacenado */
+
+DELIMITER //
+DROP PROCEDURE sp_transacciones
+DELIMITER //
+CREATE PROCEDURE sp_transacciones(
+    IN p_cuenta VARCHAR(10),
+    IN p_monto DECIMAL(10,2),
+    IN p_tipo VARCHAR(10),
+    IN p_cantidad INT  # Esta sirve para el numero de transacciones que queramos realizar
+)
+BEGIN
+		#Declaración de variables
+    DECLARE v_saldo_actual DECIMAL(10,2);
+    DECLARE v_total_creditos DECIMAL(10,2);
+    DECLARE v_total_debitos DECIMAL(10,2);
+    DECLARE v_contr INT DEFAULT 0; 
+
+		#Verifica si la cuenta existe
+    SELECT Saldo, TotalCreditos, TotalDebitos 
+    INTO v_saldo_actual, v_total_creditos, v_total_debitos
+    FROM Cuentas WHERE Cuenta = p_cuenta;
+
+		#Ciclo de repeticion para una o varias transacciones
+    WHILE v_contr < p_cantidad DO
+			#Inserta la transacción en la tabla Transacciones
+        IF p_tipo = 'credito' THEN
+            INSERT INTO Transacciones (Cuenta, Fecha, Credito, Debito)
+            VALUES (p_cuenta, CURDATE(), p_monto, 0.00);
+
+				#Actualizar la cuenta con el nuevo crédito
+            UPDATE Cuentas
+            SET TotalCreditos = TotalCreditos + p_monto,
+                Saldo = Saldo + p_monto
+            WHERE Cuenta = p_cuenta;
+
+        ELSEIF p_tipo = 'debito' THEN
+				#Verificar que el saldo sea suficiente para el débito
+            IF v_saldo_actual >= p_monto THEN
+                INSERT INTO Transacciones (Cuenta, Fecha, Credito, Debito)
+                VALUES (p_cuenta, CURDATE(), 0.00, p_monto);
+
+					#Actualizar la cuenta con el nuevo débito
+                UPDATE Cuentas
+                SET TotalDebitos = TotalDebitos + p_monto,
+                    Saldo = Saldo - p_monto
+                WHERE Cuenta = p_cuenta;
+            END IF;
+        END IF;
+
+			#Variable de control
+        SET v_contr = v_contr + 1;
+    END WHILE;
+
+END;
+
+/* 3- Sentencia de ejecución del procedimiento almacenado. */
+
+CALL sp_transacciones('20010002', 500.00, 'credito', 1);
+CALL sp_transacciones('20010002', 700.00, 'debito', 1);
+CALL sp_transacciones('20010004', 2000.00, 'debito', 1);
+CALL sp_transacciones('20010005', 700.00, 'credito', 2);
+
+
+  #Para visualizar la informacion de las tablas 
+SELECT * FROM Cuentas;
+SELECT * FROM Transacciones;
